@@ -1,0 +1,2 @@
+#To exclude the jupyter notebook checkpoints directory
+analysis/.ipynb_checkpoints/
