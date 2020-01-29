@@ -38,15 +38,16 @@
 import com.box.sdk.*
 import groovy.io.FileType;
 
-void uploadOnefile(File file2Upload, String folderId, BoxAPIConnection client) {
+void uploadOnefile(File fileToUpload, String folderId, BoxAPIConnection client) {
 
-    String fileName = file2Upload.getName()
+    println("Uploading file ${fileToUpload.getAbsolutePath()}")
+    String fileName = fileToUpload.getName()
 
-// Select Box folder
+    // Select Box folder
     BoxFolder folder = new BoxFolder(client, folderId);
 
-// Upload file
-    FileInputStream stream = new FileInputStream(file2Upload.getAbsolutePath());
+    // Upload file
+    FileInputStream stream = new FileInputStream(fileToUpload.getAbsolutePath());
     BoxFile.Info newFileInfo = folder.uploadFile(stream, fileName);
     stream.close();
 }
@@ -54,28 +55,32 @@ void uploadOnefile(File file2Upload, String folderId, BoxAPIConnection client) {
 def cli = new CliBuilder(usage: 'CheckArtifacts.groovy')
 
 cli.with {
+
     h longOpt: 'help', 'Show usage information'
     k longOpt: 'devToken', required: true, args: 1, argName: 'devToken', 'Devtoken issued by the BOX developer console'
     f longOpt: 'filePath', required: true, args: 1, argName: 'filePath', 'File to upload'
     t longOpt: 'tagetFolderId', required: true, args: 1, argName: 'targetFolderId', 'Box folder ID to upload to'
-
 }
 
 def options = cli.parse(args)
 
 if (!options) {
+
     return
 }
 
 if (options.h) {
+
     cli.usage()
     return
 }
 
 def devToken = ""
-if(options.k){
+if(options.k) {
+
     devToken = options.devToken
-}else {
+} else {
+
     return
 }
 
@@ -88,21 +93,21 @@ BoxAPIConnection client = new BoxAPIConnection(devToken);
 // Set upload values
 String folderId = options.tagetFolderId
 String filePath = options.filePath;
-File file2Upload = new File(filePath)
+File fileToUpload = new File(filePath)
 
-if(!file2Upload.exists()){
+if(!fileToUpload.exists()) {
 
-    println "Could not find the file to upload - $file2Upload"
-    System.exit(0);
+    println("Could not find the file to upload - $fileToUpload")
+    System.exit(0)
 }
 
-if (file2Upload.isFile()) {
+if (fileToUpload.isFile()) {
 
-    uploadOnefile(file2Upload, folderId, client)
+    uploadOnefile(fileToUpload, folderId, client)
 } else {
 
     //Note: only uploads what's in this folder, does not recurse
-    file2Upload.eachFile(FileType.FILES) { file ->
+    fileToUpload.eachFile(FileType.FILES) { file ->
 
         uploadOnefile(file, folderId, client)
     }

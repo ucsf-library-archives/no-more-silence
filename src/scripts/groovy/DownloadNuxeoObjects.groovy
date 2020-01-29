@@ -111,11 +111,11 @@ propertiesFile.withInputStream { it ->
     properties.load(it)
 }
 
-def metadataDir = new File(properties."metadataDir")
+def metadataDir = new File((properties."metadataDir").trim().replaceAll("%20", " "))
 def username = properties."username"
 def password = properties."password"
 def downloadDir = new File(properties."downloadDir")
-def downloadNonPdfCollections = ((properties."downloadNonPdf").split(";")).toList()
+def downloadNonPdfCollections = (((properties."downloadNonPdf").trim().replaceAll("%20", " ")).split(";")).toList()
 
 verbose = opt["v"]?true:false
 if (verbose) {
@@ -129,7 +129,7 @@ if (verbose) {
 println("metadata directory = ${metadataDir.getAbsolutePath()}")
 if (!metadataDir.exists()) {
 
-    println("metadata diretory ${metadataDir.getAbsolutePath()} does not exist")
+    println("metadata diretory ${metadataDir.getAbsolutePath()} does not exist.  Exiting.")
     System.exit(1)
 }
 

@@ -37,18 +37,21 @@ POSSIBILITY OF SUCH DAMAGE.
  *
  * In order to run this script pynux and nxls must be installed and configured:
  * https://github.com/ucldc/pynux
- *    Note: the values given in the doc needs to be upated to:
+ *    Note: the values given in the doc needs to be updated to:
  *      base = https://nuxeo.cdlib.org/Nuxeo/site/api/v1
  *      X-NXDocumentProperties = *
  * https://github.com/ucldc/nuxeo_spreadsheet/wiki
  *
  * Then add the path to python path in .bashrc (linux) or .bash_profile(mac)
  * export PYTHONPATH="${PYTHONPATH}:/my/pynux/path"
- * for example, on my machine: export PYTHONPATH="${PYTHONPATH}:/Users/rtang/anaconda/lib/python2.7/site-packages/pynux"
+ * for example, on my machine: export PYTHONPATH="${PYTHONPATH}:/Users/rtang/anaconda/lib/python3.6/site-packages/pynux"
  *
  * Example DownloadNuxeoMetadata.properties
  * downloadPath= AR 2005-15 CAPS;GLBTHS;GLBTHS/AIDS Ephemera
  * downloadDir=/Users/rtang/nuxeo_downloads/json
+ *
+ * Please note that in 2019 during phase 1, pynux was using python 2.7
+ * In phase 2, 2020, pynux has been upgraded to use python 3.6
  */
 
 
@@ -145,6 +148,7 @@ propertiesFile.withInputStream { it ->
 
 def downloadPath = properties."downloadPath"
 def paths = downloadPath.split(";")
+println("paths: $paths")
 def downloadDir = new File(properties."downloadDir")
 
 verbose = opt["v"]?true:false
@@ -158,7 +162,7 @@ println("download to directory = ${downloadDir.getPath()}")
 if (!downloadDir.exists()) {
 
     downloadDir.mkdirs()
-    if (verbose) {
+    if (verbose) {rm *
 
         println("Download to dir doesn't exit, creating...")
     }
@@ -168,9 +172,11 @@ if (!downloadDir.exists()) {
 def downloadPathBase = "/asset-library/UCSF/"
 for (String path: paths) {
 
-    path = path.trim()
+    path = path.trim().replaceAll("%20", " ")
     println ("  path -> $path")
 
     downloadMetadataFromNuxeo(downloadPathBase, path, downloadDir, verbose)
 
 }
+
+println("Download finished.")
