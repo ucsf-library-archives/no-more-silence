@@ -162,35 +162,56 @@ metadataDir.eachFileRecurse (FileType.FILES) { file ->
 
         if (verbose) println("For collection $subDir, downloadNonPdf is $downloadNonPdf")
 
+        /*
+         * download logic:
+         * if downloadNonPdf is false, then download pdf only for main file and attachments
+         *
+         * if downloadNonPdf is true, then download any main file irregardless of type and download non-pdf attachments only if main file is not pdf
+         *
+         */
+        boolean hasMainPdf = false
         if (data.properties."file:content" != null) {
 
             def mainFileUrl = data.properties."file:content"."data"
-            if (verbose) println("   main file " + mainFileUrl)
 
-            if (downloadNonPdf) {
+            if (downloadNonPdf) { //download main file no matter what the type is
 
+                if (verbose) println("   download main file " + mainFileUrl)
                 downloadFile(verbose, downloadDir, subDir, mainFileUrl, username, password)
+                if (mainFileUrl.endsWith(".pdf")) {
+
+                    hasMainPdf = true
+                }
+
             } else { //pdf only
 
                 if (mainFileUrl.endsWith(".pdf")) {
 
+                    if (verbose) println("   download main file " + mainFileUrl)
                     downloadFile(verbose, downloadDir, subDir, mainFileUrl, username, password)
+                    hasMainPdf = true
                 }
             }
         }
 
+        // only download tiff attachments if there is no main .pdf file present
         data.properties."files:files".each {
 
-            if (verbose) println("          attachments: " + it["file"]["data"])
-
             def attachmentUrl = it["file"]["data"]
-            if (downloadNonPdf) {
+            if (downloadNonPdf && !hasMainPdf) { //download the non-pdf attachment only if main pdf is not found
 
+                if (verbose) println("        download nonPdf attachments: " + it["file"]["data"])
                 downloadFile(verbose, downloadDir, subDir, attachmentUrl, username, password)
-            } else { //pdf only
+            }
+            else if (downloadNonPdf && hasMainPdf) {
+
+                println("           main file is Pdf, so we skip download attached non-pdf files.")
+            }
+            else { //pdf attachemnts only - always download, doesn't matter what the main file is
 
                 if (attachmentUrl.endsWith(".pdf")) {
 
+                    if (verbose) println("        download pdf attachments: " + it["file"]["data"])
                     downloadFile(verbose, downloadDir, subDir, attachmentUrl, username, password)
                 }
             }
