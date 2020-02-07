@@ -38,18 +38,82 @@
 import com.box.sdk.*
 import groovy.io.FileType;
 
+void upload(File fileToUpload, String folderId, BoxAPIConnection client) {
+
+    if (fileToUpload.isFile()) {
+
+        uploadOnefile(fileToUpload, folderId, client)
+    }
+    else {
+        //check if folder exists, if not upload
+        //create directory
+        BoxFolder folder = new BoxFolder(client, folderId)
+        Iterable<BoxItem.Info> children = folder.getChildren()
+        boolean folderExists = false
+        BoxFolder.Info subFolderInfo
+        for (BoxItem.Info child: children) {
+
+            if (child.getName() == fileToUpload.getName()) {
+
+                folderExists = true
+                subFolderInfo = child
+                println("Found folder ${fileToUpload.getName()}, will not create")
+            }
+        }
+
+        if (!folderExists) {
+
+            subFolderInfo = folder.createFolder(fileToUpload.getName())
+            println("Creat folder ${fileToUpload.getName()}")
+        }
+        //Note: only uploads what's in this folder, does not recurse
+        //create folder on box
+        //upload files to this folder
+        fileToUpload.eachFile() { file ->
+
+            //check if file exists, if not upload
+            if (file.isFile()) {
+
+                uploadOnefile(file, subFolderInfo.getID(), client)
+            }
+            else if (file.isDirectory()) {
+
+                upload(file, subFolderInfo.getID(), client)
+            }
+            else {
+
+                println(" Do not recognize file type: ${file.getAbsolutePath()}")
+            }
+        }
+    }
+}
+
 void uploadOnefile(File fileToUpload, String folderId, BoxAPIConnection client) {
 
-    println("Uploading file ${fileToUpload.getAbsolutePath()}")
     String fileName = fileToUpload.getName()
 
     // Select Box folder
     BoxFolder folder = new BoxFolder(client, folderId);
 
+    Iterable<BoxItem.Info> children = folder.getChildren()
+    boolean fileExists = false;
+    for (BoxItem.Info child: children) {
+
+        if (child.getName() == fileToUpload.getName()) {
+
+            fileExists = true
+            println("Found file ${fileToUpload.getName()}, will not create")
+        }
+    }
+
     // Upload file
-    FileInputStream stream = new FileInputStream(fileToUpload.getAbsolutePath());
-    BoxFile.Info newFileInfo = folder.uploadFile(stream, fileName);
-    stream.close();
+    if (!fileExists) {
+
+        FileInputStream stream = new FileInputStream(fileToUpload.getAbsolutePath());
+        BoxFile.Info newFileInfo = folder.uploadFile(stream, fileName);
+        stream.close();
+        println("Uploading file ${fileToUpload.getAbsolutePath()}")
+    }
 }
 
 def cli = new CliBuilder(usage: 'CheckArtifacts.groovy')
@@ -101,14 +165,4 @@ if(!fileToUpload.exists()) {
     System.exit(0)
 }
 
-if (fileToUpload.isFile()) {
-
-    uploadOnefile(fileToUpload, folderId, client)
-} else {
-
-    //Note: only uploads what's in this folder, does not recurse
-    fileToUpload.eachFile(FileType.FILES) { file ->
-
-        uploadOnefile(file, folderId, client)
-    }
-}
+upload(fileToUpload, folderId, client)
