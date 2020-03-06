@@ -32,13 +32,17 @@
  * Note this script does not create directory on box
 */
 
- @Grab(group='com.box', module='box-java-sdk', version='2.8.2')
-
+@Grab(group='com.box', module='box-java-sdk', version='2.8.2')
 
 import com.box.sdk.*
 import groovy.io.FileType;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
-void upload(File fileToUpload, String folderId, BoxAPIConnection client) {
+/*
+upload to box and preserve folder structure
+ */
+void uploadAndCreateFolder(File fileToUpload, String folderId, BoxAPIConnection client) {
 
     if (fileToUpload.isFile()) {
 
@@ -66,9 +70,7 @@ void upload(File fileToUpload, String folderId, BoxAPIConnection client) {
             subFolderInfo = folder.createFolder(fileToUpload.getName())
             println("Creat folder ${fileToUpload.getName()}")
         }
-        //Note: only uploads what's in this folder, does not recurse
-        //create folder on box
-        //upload files to this folder
+
         fileToUpload.eachFile() { file ->
 
             //check if file exists, if not upload
@@ -78,7 +80,7 @@ void upload(File fileToUpload, String folderId, BoxAPIConnection client) {
             }
             else if (file.isDirectory()) {
 
-                upload(file, subFolderInfo.getID(), client)
+                uploadAndCreateFolder(file, subFolderInfo.getID(), client)
             }
             else {
 
@@ -88,6 +90,41 @@ void upload(File fileToUpload, String folderId, BoxAPIConnection client) {
     }
 }
 
+/*
+ * recurse through all folders under filetoUpload and upload to a single folder on box
+ */
+void uploadAndFlatten(File fileToUpload, String folderId, BoxAPIConnection client) {
+
+    if (fileToUpload.isFile()) {
+
+        uploadOnefile(fileToUpload, folderId, client)
+    }
+    else {
+
+
+        fileToUpload.eachFile() { file ->
+
+            //check if file exists, if not upload
+            if (file.isFile()) {
+
+                uploadOnefile(file, folderId, client)
+            }
+            else if (file.isDirectory()) {
+
+                uploadAndFlatten(file, folderId, client)
+            }
+            else {
+
+                println(" Do not recognize file type: ${file.getAbsolutePath()}")
+            }
+        }
+    }
+
+}
+/*
+Upload one file
+If it exists, it will not uplaod
+ */
 void uploadOnefile(File fileToUpload, String folderId, BoxAPIConnection client) {
 
     String fileName = fileToUpload.getName()
@@ -121,9 +158,10 @@ def cli = new CliBuilder(usage: 'CheckArtifacts.groovy')
 cli.with {
 
     h longOpt: 'help', 'Show usage information'
-    k longOpt: 'devToken', required: true, args: 1, argName: 'devToken', 'Devtoken issued by the BOX developer console'
+    k longOpt: 'devToken', required: true, args: 1, argName: 'devToken', 'Devtoken issued by the BOX developer console or auth json file'
     f longOpt: 'filePath', required: true, args: 1, argName: 'filePath', 'File to upload'
     t longOpt: 'tagetFolderId', required: true, args: 1, argName: 'targetFolderId', 'Box folder ID to upload to'
+    o longOpt: 'uploadOption', required: true, args: 1, argName: 'folder or flat', 'Folder means to preserve folder structure, flat means to upload all files into a single directory'
 }
 
 def options = cli.parse(args)
@@ -143,13 +181,65 @@ def devToken = ""
 if(options.k) {
 
     devToken = options.devToken
-} else {
+}
+else {
 
+    cli.usage()
     return
 }
 
-// Create new basic client with developer token as first argument
-BoxAPIConnection client = new BoxAPIConnection(devToken);
+boolean flat = true
+if (options.o) {
+
+    if (options.o.equalsIgnoreCase("flat")) {
+
+        flat = true
+    }
+    else if (options.o.equalsIgnoreCase("folder")) {
+
+        flat = false
+    }
+    else {
+
+        println("Do not recognize option: ${options.o}")
+        cli.usage()
+        return
+    }
+
+}
+else {
+
+    cli.usage()
+    return
+}
+
+// hack for JCE Unlimited Strength
+Field field = Class.forName("javax.crypto.JceSecurity").getDeclaredField("isRestricted");
+field.setAccessible(true);
+
+Field modifiersField = Field.class.getDeclaredField("modifiers");
+modifiersField.setAccessible(true);
+modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
+
+field.set(null, false);
+BoxAPIConnection client
+
+if (devToken.toLowerCase().endsWith("json")) { //using auth file
+
+    Reader reader = new FileReader(devToken);
+    BoxConfig config = BoxConfig.readFrom(reader);
+
+    client = BoxDeveloperEditionAPIConnection.getAppEnterpriseConnection(config);
+
+}
+else {
+
+    // Create new basic client with developer token as first argument
+    client = new BoxAPIConnection(devToken);
+
+}
+
+
 
 // if filepath is a single file, then it will upload that single file
 // if filepath is a directory, then it will upload all files under that directory
@@ -165,4 +255,11 @@ if(!fileToUpload.exists()) {
     System.exit(0)
 }
 
-upload(fileToUpload, folderId, client)
+if (flat) {
+
+    uploadAndFlatten(fileToUpload, folderId, client)
+}
+else {
+
+    uploadAndCreateFolder(fileToUpload, folderId, client)
+}
