@@ -1,6 +1,4 @@
-import groovy.io.FileType
-import groovy.json.JsonSlurper
-
+#!/bin/env groovy
 /**
  Copyright © 2018, Regents of the University of California
  All rights reserved.
@@ -26,7 +24,6 @@ import groovy.json.JsonSlurper
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
  */
-
 
 /**
  * Created by Rebecca Tang on 1/31/19.
@@ -75,6 +72,16 @@ import groovy.json.JsonSlurper
  *
  */
 
+// https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+@Grab(group='org.apache.commons', module='commons-lang3', version='3.3.1')
+//@Grab(group='commons-lang', module='commons-lang', version='2.6')
+
+
+import groovy.io.FileType
+import groovy.json.JsonSlurper
+import org.apache.commons.lang3.StringUtils
+
+
 //-------------- functions --------------------//
 
 void recordFieldWithMoreValues(List fields, String name, def data) {
@@ -109,7 +116,11 @@ String cleanData(String origData) {
 
     //escape double quotes
     //replace tab with blank space
-    return origData.replaceAll("\"", "\"\"").replaceAll("\\s", " ").replace(System.getProperty("line.separator"), " ")
+    if (StringUtils.isBlank(origData)) {
+
+        return origData
+    }
+    return origData.replaceAll("\"", "\"\"").replaceAll("\\s", " ").replace(System.getProperty("line.separator"), " ").trim()
 }
 
 //-------------- main logic -------------------//
@@ -192,9 +203,31 @@ if (verbose) {
     println("writing to metadata to  ${metadataFile.getPath()}")
 }
 
-def complexRepeatingHeaderGrouping =[
+/*
+This map the directories that can be used as collection name
+Key is directory name, value is display name
+ */
+Map<String, String> directoryToCollectionNameMap = [
 
+        "2003-10 Beowulf Thorne Papers" : "Beowulf Thorne Papers, 2003-10",
+        "2006-02 Shanti (Project) Records" : "Shanti (Project) Records, 2006-02 ",
+        "2006-08 Marin Co. AIDS Task Force and AIDS Advisory Committee Records" : "Marin Co. AIDS Task Force and AIDS Advisory Committee Records, 2006-08",
+        "2008-23 Bruce Decker Papers" : "Bruce Decker Papers, 2008-23",
+        "AIDS Ephemera" : "AIDS Ephemera",
+        "MSS 2000-31 AIDS Ephemera Collection" : "AIDS Ephemera Collection, MSS 2000-31",
+        "MSS 94-18 John L. Ziegler, MD papers" : "John L. Ziegler, MD papers, MSS 94-18",
+        "MSS 94-28 AIDS Treatment News" : "AIDS Treatment News, MSS 94-28",
+        "MSS 94-55 Healing Alternatives Foundation Records" : "Healing Alternatives Foundation Records, MSS 94-55",
+        "MSS 96-01 AIDS Legal Referral Panel Files" : "AIDS Legal Referral Panel Files, MSS 96-01 ",
+        "MSS 98-39 Conant" : "Conant, MSS 98-39",
+        "GLC 45 Vincent Diaries" : "Vincent Diaries, GLC 45",
+        "GLC 51 Gary Fisher Papers" : "Gary Fisher Papers, GLC 51",
+        "GLC 60 Eric Rofes Papers" : "Eric Rofes Papers, GLC 60",
+        "GLC 76" : "GLC 76",
+        "SFH 4 San Francisco Department of Public Health AIDS Office records" : "San Francisco Department of Public Health AIDS Office records, SFH 4"
 ]
+
+
 
 /*
 complex repeating headers repeats by putting the number after the first term
@@ -263,6 +296,8 @@ def nameToJsonFieldMap = [
 ]
 
 /*
+*  Global map
+*
 *  key is field name
 *  value is the max number of values for this field, so that the field can be written out to the metadata file this many times
 *
@@ -271,9 +306,10 @@ def nameToJsonFieldMap = [
 *  Subject (Name) 1 Name , Subject (Name) 1 Name Type , Subject (Name) 1 Source, Subject (Name) 2 Name , Subject (Name) 2 Name Type , Subject (Name) 2 Source ...
 */
 NAME_TO_JSON_VALUES_MAX_COUNT_MAP = [
+
         "Collection Title" : 1,
         "Title":1,
-        "Local Identifier " : 1,
+        "Local Identifier" : 1,
         "Type" : 1,
         "ComplexGroup Date" : 1,
         //"Date":1,
@@ -340,8 +376,9 @@ jsonDir.eachFileRecurse(FileType.FILES) { file ->
 println("Field and max number of values in each field:")
 println(NAME_TO_JSON_VALUES_MAX_COUNT_MAP)
 
-
-//write header
+/*************
+write header
+**************/
 int headerCounter = 0
 NAME_TO_JSON_VALUES_MAX_COUNT_MAP.each { it->
 
@@ -362,7 +399,7 @@ NAME_TO_JSON_VALUES_MAX_COUNT_MAP.each { it->
                 List value = headerParts.get(key)
                 for (String valueItem : value) {
 
-                    metadataFile << qualifier + key + " " + valueItem + qualifier
+                    metadataFile << qualifier + (key + " " + valueItem).trim() + qualifier
                     metadataFile << delimiter
                     headerCounter++
                 }
@@ -391,7 +428,7 @@ NAME_TO_JSON_VALUES_MAX_COUNT_MAP.each { it->
 
                     for (String valueItem : value) {
 
-                        metadataFile << qualifier + key + " " + (i + 1) + " " + valueItem + qualifier
+                        metadataFile << qualifier + (key + " " + (i + 1) + " " + valueItem).trim() + qualifier
                         metadataFile << delimiter
                         headerCounter++
                     }
@@ -416,7 +453,9 @@ metadataFile << "\"Ocr text\"\n"
 headerCounter ++
 if (verbose) println("Wrote total $headerCounter headers")
 
-
+/***********
+ write data
+ **********/
 fileCounter = 0
 try {
 
@@ -435,12 +474,35 @@ try {
             boolean writeToCsv = true
             String source = jsonData = data.properties."ucldc_schema:source"
             String title = jsonData = data.properties."dc:title"
-            if (source == null && !title.endsWith(".pdf")) {
+            //this means this json file is for the directory and we don't write it out
+            if (StringUtils.isBlank(source) && !title.endsWith(".pdf") && !title.endsWith(".tif")) {
 
                 writeToCsv = false
             }
 
             if (writeToCsv) {
+
+                //create new Source -- which will be written into "collection title" and "source" -- from directory
+                String newSource = ""
+                if (StringUtils.isBlank(source)) {
+
+                    boolean foundCollection = false
+                    File currentDir = file
+                    while (!foundCollection) {
+
+                        //println("CurrentDir ${currentDir.getName()}")  //debug
+                        if (directoryToCollectionNameMap.containsKey(currentDir.getName())) {
+
+                            newSource = directoryToCollectionNameMap.get(currentDir.getName())
+                            foundCollection = true;
+                        } else {
+
+                            currentDir = currentDir.getParentFile()
+                        }
+                        //println("foundCollection $foundCollection") //debug
+                    }
+                }
+                println("newsource $newSource") //debug
 
                 nameToJsonFieldMap.each { it ->
 
@@ -515,8 +577,16 @@ try {
 
                             if (jsonData == null) jsonData = " "
 
+                            if (name.equalsIgnoreCase("Collection Title") || name.equalsIgnoreCase("Source")) {
+
+                                //println("Name = $name") //debug
+                                //println("jsonData before $jsonData") //debug
+                                if (StringUtils.isBlank(jsonData)) jsonData = newSource
+                                //println("jsonData after $jsonData")
+                            }
 
                             jsonData = cleanData(jsonData)
+                            //if (name == "Type") println("name: type, value $jsonData") //debug
                             //replace return with blank space
                             metadataFile << qualifier + jsonData + qualifier //surround values by text qualifier
                             metadataFile << delimiter
@@ -564,9 +634,15 @@ try {
 
                     String ocrFileName = data.properties."file:content"."name"
                     println("file:content.name = $ocrFileName")
-                    if (ocrFileName.endsWith(".pdf")) {
+                    if (ocrFileName.endsWith(".pdf") || ocrFileName.endsWith(".tif")) {
 
-                        ocrFileName = ocrFileName.replace(".pdf", ".ocr")
+                        if (ocrFileName.endsWith(".pdf")) {
+
+                            ocrFileName = ocrFileName.replace(".pdf", ".ocr")
+                        } else {
+
+                            ocrFileName = ocrFileName.replace(".tif", ".ocr")
+                        }
 
                         println("ocrfile => $ocrFileName")
                         File ocrFile = new File(ocrFileDir, ocrFileName)
