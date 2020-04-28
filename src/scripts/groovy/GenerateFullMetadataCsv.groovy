@@ -156,6 +156,7 @@ File ocrDir = new File(properties."ocrDir")
 File metadataFileDir = new File(properties.outputDir)
 File metadataFile
 PrintWriter metadataWriter
+def downloadNonPdfCollections = (((properties."downloadNonPdf").trim().replaceAll("%20", " ")).split(";")).toList()
 
 
 String metadataFileName = properties.metadataFileName
@@ -480,29 +481,41 @@ try {
                 writeToCsv = false
             }
 
-            if (writeToCsv) {
+            //create new Source -- which will be written into "collection title" and "source" -- from directory
+            String newSource = ""
+            File currentDir = file
+            if (StringUtils.isBlank(source)) {
 
-                //create new Source -- which will be written into "collection title" and "source" -- from directory
-                String newSource = ""
-                if (StringUtils.isBlank(source)) {
+                boolean foundCollection = false
+                while (!foundCollection) {
 
-                    boolean foundCollection = false
-                    File currentDir = file
-                    while (!foundCollection) {
+                    //println("CurrentDir ${currentDir.getName()}")  //debug
+                    if (directoryToCollectionNameMap.containsKey(currentDir.getName())) {
 
-                        //println("CurrentDir ${currentDir.getName()}")  //debug
-                        if (directoryToCollectionNameMap.containsKey(currentDir.getName())) {
+                        newSource = directoryToCollectionNameMap.get(currentDir.getName())
+                        foundCollection = true;
+                    } else {
 
-                            newSource = directoryToCollectionNameMap.get(currentDir.getName())
-                            foundCollection = true;
-                        } else {
-
-                            currentDir = currentDir.getParentFile()
-                        }
-                        //println("foundCollection $foundCollection") //debug
+                        currentDir = currentDir.getParentFile()
                     }
+                    //println("foundCollection $foundCollection") //debug
                 }
-                println("newsource $newSource") //debug
+            }
+            println("source = $source && newsource = $newSource") //debug
+
+            //it's a tif file and the collection does not download tif, so we ignore this entry
+            if (title.endsWith(".tif") && !downloadNonPdfCollections.contains(currentDir.getName())) {
+
+                writeToCsv = false;
+                println("Don't need to write: $newSource and $title")
+            }
+
+            if (title.endsWith(".tif")) { //debug
+
+                println("title: $title && writeTocsv? : $writeToCsv")
+            }
+
+            if (writeToCsv) {
 
                 nameToJsonFieldMap.each { it ->
 
