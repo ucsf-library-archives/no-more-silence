@@ -225,7 +225,19 @@ Map<String, String> directoryToCollectionNameMap = [
         "GLC 51 Gary Fisher Papers" : "Gary Fisher Papers, GLC 51",
         "GLC 60 Eric Rofes Papers" : "Eric Rofes Papers, GLC 60",
         "GLC 76" : "GLC 76",
-        "SFH 4 San Francisco Department of Public Health AIDS Office records" : "San Francisco Department of Public Health AIDS Office records, SFH 4"
+        "SFH 4 San Francisco Department of Public Health AIDS Office records" : "San Francisco Department of Public Health AIDS Office records, SFH 4",
+        "2000-46 AIDS Legal Referral Panel Records" : "AIDS Legal Referral Panel Records, 2000-46",
+        "2005-13 Sue Rochman Papers" : "Sue Rochman Papers, 2005-13",
+        "2003-09 Linda Alband Papers" : "Linda Alband Papers, 2003-09",
+        "GLC 63 Barbara Cameron Papers" : "Barbara Cameron Papers, GLC 63",
+        "SFH 31 People vs. Owen Bathhouse Closure Litigation" : "People vs. Owen Bathhouse Closure Litigation, SFH 31",
+        "SFH 71 Deaf AIDS Center Records" : "Deaf AIDS Center Records, SFH 71",
+        "MSS 2001-04 Sally Hughes AIDS Research" : "Sally Hughes AIDS Research, MSS 2001-04",
+        "MSS 2009-04 Dritz" : "Dritz, MSS 2009-04",
+        "MSS 95-03 Mobilization Against AIDS Records" : "Mobilization Against AIDS Records, MSS 95-03",
+        "MSS 95-04 Women's AIDS Network (WAN) Records" : "Women's AIDS Network (WAN) Records, MSS 95-04",
+        "MSS 98-47 ACT-UP Golden Gate records" : "ACT-UP Golden Gate records, MSS 98-47",
+        "MSS 98-48 Shanti Project Records" : "Shanti Project Records, MSS 98-48"
 ]
 
 
@@ -484,7 +496,7 @@ try {
             //create new Source -- which will be written into "collection title" and "source" -- from directory
             String newSource = ""
             File currentDir = file
-            if (StringUtils.isBlank(source)) {
+            if (StringUtils.isBlank(source) && writeToCsv) {
 
                 boolean foundCollection = false
                 while (!foundCollection) {
@@ -503,7 +515,8 @@ try {
             }
             println("source = $source && newsource = $newSource") //debug
 
-            //it's a tif file and the collection does not download tif, so we ignore this entry
+            //it's a tif file and the collection does not download tif, so we ignore this entry because this entry is not going to be written
+            //into datafile
             if (title.endsWith(".tif") && !downloadNonPdfCollections.contains(currentDir.getName())) {
 
                 writeToCsv = false;
