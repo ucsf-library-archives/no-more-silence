@@ -162,7 +162,7 @@ println("download to directory = ${downloadDir.getPath()}")
 if (!downloadDir.exists()) {
 
     downloadDir.mkdirs()
-    if (verbose) {rm *
+    if (verbose) {
 
         println("Download to dir doesn't exit, creating...")
     }

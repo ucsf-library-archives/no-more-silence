@@ -45,6 +45,7 @@
 import groovy.io.FileType
 import groovy.json.JsonSlurper
 
+import javax.net.ssl.HttpsURLConnection
 
 
 //---------------- functions ------------
@@ -71,13 +72,32 @@ def downloadFile(boolean verbose, File downloadDir, String subDir, String downlo
 
         downloadFile.withOutputStream { out ->
 
-            def url = new URL(basicAuthUrl).openConnection()
+            def url = (HttpsURLConnection)new URL(basicAuthUrl).openConnection()
             println("          Downloading url => $url")
-            def remoteAuth = "Basic " + "${username}:${password}".bytes.encodeBase64()
+            def remoteAuth = "Basic " + "${username}:${password}".getBytes().encodeBase64()  //authenticate the original url
             url.setRequestProperty("Authorization", remoteAuth);
-            out << url.inputStream
-            FILE_COUNTER++
-            if (verbose) println "  File(s) downloaded  $FILE_COUNTER"
+            url.setInstanceFollowRedirects(false)  //don't follow redirect, handle it manually
+            println("          Downloading url => $url")
+            def code = url.getResponseCode()
+            println("code = " + code)
+            if (code > 300 && code < 400) {
+                def location = url.getHeaderField("Location")
+                //println("location " + location) //debug
+                def url2 = (HttpsURLConnection)new URL(location).openConnection()  //don't authenticate the redirect url
+                try {
+
+                    //println(url2.getHeaderFields()) //debug
+                    out << url2.getInputStream()
+                    FILE_COUNTER++
+                    if (verbose) println "  File(s) downloaded  $FILE_COUNTER"
+                }
+                catch (Exception e) {
+
+                    println("Download Failed!!")
+                    downloadFile.delete()
+                    println(e)
+                }
+            }
 
         }
     }
