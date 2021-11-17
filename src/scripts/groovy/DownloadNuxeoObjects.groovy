@@ -49,12 +49,12 @@ import javax.net.ssl.HttpsURLConnection
 
 
 //---------------- functions ------------
-def downloadFile(boolean verbose, File downloadDir, String subDir, String downloadUrl, String username, String password) {
+def downloadFile(boolean verbose, File downloadDir, String subDir, String downloadUrl, String downloadFileName, String username, String password) {
 
     def basicAuthUrl = downloadUrl.replace("/nuxeo/", "/Nuxeo/")
     println("          basicAuthUrl + $basicAuthUrl")
 
-    def fileName = downloadUrl.substring(downloadUrl.lastIndexOf("/")+1, downloadUrl.length())
+    def fileName = downloadFileName //downloadUrl.substring(downloadUrl.lastIndexOf("/")+1, downloadUrl.length())
     if (verbose) println("          Download to File Name $fileName")
 
     def subDownloadDir = new File(downloadDir, subDir)
@@ -193,22 +193,23 @@ metadataDir.eachFileRecurse (FileType.FILES) { file ->
         if (data.properties."file:content" != null) {
 
             def mainFileUrl = data.properties."file:content"."data"
+            def mainFileName = data.properties."file:content"."name"
 
             if (downloadNonPdf) { //download main file no matter what the type is
 
                 if (verbose) println("   download main file " + mainFileUrl)
-                downloadFile(verbose, downloadDir, subDir, mainFileUrl, username, password)
-                if (mainFileUrl.endsWith(".pdf")) {
+                downloadFile(verbose, downloadDir, subDir, mainFileUrl, mainFileName, username, password)
+                if (mainFileName.endsWith(".pdf")) {
 
                     hasMainPdf = true
                 }
 
             } else { //pdf only
 
-                if (mainFileUrl.endsWith(".pdf")) {
+                if (mainFileName.endsWith(".pdf")) {
 
                     if (verbose) println("   download main file " + mainFileUrl)
-                    downloadFile(verbose, downloadDir, subDir, mainFileUrl, username, password)
+                    downloadFile(verbose, downloadDir, subDir, mainFileUrl, mainFileName, username, password)
                     hasMainPdf = true
                 }
             }
@@ -218,10 +219,11 @@ metadataDir.eachFileRecurse (FileType.FILES) { file ->
         data.properties."files:files".each {
 
             def attachmentUrl = it["file"]["data"]
+            def attachmentFileName = it["file"]["name"]
             if (downloadNonPdf && !hasMainPdf) { //download the non-pdf attachment only if main pdf is not found
 
                 if (verbose) println("        download nonPdf attachments: " + it["file"]["data"])
-                downloadFile(verbose, downloadDir, subDir, attachmentUrl, username, password)
+                downloadFile(verbose, downloadDir, subDir, attachmentUrl, attachmentFileName, username, password)
             }
             else if (downloadNonPdf && hasMainPdf) {
 
@@ -232,7 +234,7 @@ metadataDir.eachFileRecurse (FileType.FILES) { file ->
                 if (attachmentUrl.endsWith(".pdf")) {
 
                     if (verbose) println("        download pdf attachments: " + it["file"]["data"])
-                    downloadFile(verbose, downloadDir, subDir, attachmentUrl, username, password)
+                    downloadFile(verbose, downloadDir, subDir, attachmentUrl, attachmentFileName, username, password)
                 }
             }
         }
