@@ -237,7 +237,12 @@ Map<String, String> directoryToCollectionNameMap = [
         "MSS 95-03 Mobilization Against AIDS Records" : "Mobilization Against AIDS Records, MSS 95-03",
         "MSS 95-04 Women's AIDS Network (WAN) Records" : "Women's AIDS Network (WAN) Records, MSS 95-04",
         "MSS 98-47 ACT-UP Golden Gate records" : "ACT-UP Golden Gate records, MSS 98-47",
-        "MSS 98-48 Shanti Project Records" : "Shanti Project Records, MSS 98-48"
+        "MSS 98-48 Shanti Project Records" : "Shanti Project Records, MSS 98-48",
+        "AR 2005-15 CAPS": "UCSF Center for AIDS Prevention Studies (CAPS), 1984-2004, AR 2005-15",
+        "AR 2007-14 AIDS Health Project": "UCSF AIDS Health Project Records, 1983-2004, AR 2007-14",
+        "MSS 2013-03 Garrett": "Laurie Garrett, 1970-2013, MSS 2013-03",
+        "MSS 2015-01 Francis": "Donald Francis, 1970-2005, MSS 2015-1",
+        "MSS 93-18 Bay Area HIV Support and Education Services Records": "Bay Area HIV Support and Education Services Records, 1989-1993, MSS 93-18"
 ]
 
 
@@ -499,9 +504,11 @@ try {
             if (StringUtils.isBlank(source) && writeToCsv) {
 
                 boolean foundCollection = false
+
                 while (!foundCollection) {
 
-                    //println("CurrentDir ${currentDir.getName()}")  //debug
+                    println(directoryToCollectionNameMap) //debug
+                    println("CurrentDir ${currentDir.getName()}")  //debug
                     if (directoryToCollectionNameMap.containsKey(currentDir.getName())) {
 
                         newSource = directoryToCollectionNameMap.get(currentDir.getName())
